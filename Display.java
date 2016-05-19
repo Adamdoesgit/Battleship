@@ -56,12 +56,14 @@ public class Display extends JFrame implements MouseListener {
 		Grid grid = new Grid();
 		player[1] = new Player(grid);  // Human
 	}
-
 	
+	//helper function for randomly generating valid ship positions
 	public void computerPositionGenerator(Grid grid, int length, String name){
+		//generates random positions and orientations, and then tests them if they are valid.
 		if (grid.addShip(length, new Point((int) (Math.random() * 9),(int) (Math.random() * 9)), (0.5 > Math.random()), name)) {
 			grid.addShip(length, new Point((int) (Math.random() * 9),(int) (Math.random() * 9)), (0.5 > Math.random()), name);
 		}
+		//repeat if not valid
 		else {
 			computerPositionGenerator(grid, length,name);
 		}
@@ -73,6 +75,7 @@ public class Display extends JFrame implements MouseListener {
 		// THE SHIPS RANDOMLY INSTEAD OF (0, 0), (1, 1), (6, 6), 
 		// (5, 7), and (0, 5)... (5 POINTS)
 		
+		//uses helper function computerPositionGenerator to randomly generate positions.
 		computerPositionGenerator(grid, 2, "Patrol");
 		computerPositionGenerator(grid, 3, "Submarine");
 		computerPositionGenerator(grid, 3, "Destroyer");
@@ -86,26 +89,27 @@ public class Display extends JFrame implements MouseListener {
     // The code in BLUE, below, is a fixed version of paint() that won't flicker.
     // Please use it in your own paint() method if you are seeing flickering issues.
 	public void paint(Graphics g) {
-		 BufferedImage image = new BufferedImage(getWidth(), getHeight(), BufferedImage.TYPE_INT_ARGB);
-        Graphics gr = image.getGraphics();
-        gr.fillRect(0, 0, getWidth(), getHeight());
-        Font f1 = new Font("Monospaced", Font.BOLD, 24);
-        gr.setFont(f1);
-        gr.setColor(Color.WHITE);
-        gr.fillRect(0, 0, getWidth(), getHeight());
-        gr.setColor(Color.BLACK);
-        showBoard(gr, 0);
-        showBoard(gr, 1);
-        if (gameState == 0) {
-        	showShipPlacementButtons(gr);
-        }
-        if(player[0].hasShips() & player[1].hasShips()){
-        }
-        else {
-        	showGameOver(gr);
-        }
-        super.paint(g);
-        g.drawImage(image, 0, 0, null);
+		BufferedImage image = new BufferedImage(getWidth(), getHeight(), BufferedImage.TYPE_INT_ARGB);
+		Graphics gr = image.getGraphics();
+		gr.fillRect(0, 0, getWidth(), getHeight());
+		Font f1 = new Font("Monospaced", Font.BOLD, 24);
+		gr.setFont(f1);
+		gr.setColor(Color.WHITE);
+		gr.fillRect(0, 0, getWidth(), getHeight());
+		gr.setColor(Color.BLACK);
+		showBoard(gr, 0);
+		showBoard(gr, 1);
+		if (gameState == 0) {
+			showShipPlacementButtons(gr);
+		}
+		
+		//test of conditions to see if the game is over
+		if(!(player[0].hasShips() && player[1].hasShips())){
+			showGameOver(gr);
+		}
+		
+		super.paint(g);
+		g.drawImage(image, 0, 0, null);
 	}
 
 	public void showShipPlacementButtons(Graphics g) {
@@ -159,6 +163,7 @@ public class Display extends JFrame implements MouseListener {
 		}
 	}
 	
+	//method that displays "Game Over"
 	public void showGameOver(Graphics g) {
 		g.setColor(Color.RED);
 		g.setFont(new Font("Monospaced", Font.BOLD, 36));
@@ -442,9 +447,8 @@ public class Display extends JFrame implements MouseListener {
 		Grid grid = player[0].getGrid();
 		Point p = new Point(xCoord, yCoord);
 		// YOU WRITE CODE HERE
-		//if (grid.getFired(p.getX(),p.getY()) == 0) {
-			grid.fire(p);
-		//}
+		//the method that enables you to fire at the opponent
+		grid.fire(p);
 	}
 
 	// THIS IS THE MOST IMPORTANT PART OF YOUR GRADE ON THIS TEST!
@@ -461,65 +465,83 @@ public class Display extends JFrame implements MouseListener {
 	public void fireOnHuman() {
 		Grid grid = player[1].getGrid();
 		// CHANGE THE CODE BELOW TO MAKE THIS METHOD WORK
+		
+		//check to see if a ship has been hit
 		if (Strategy.hit != null) {
+			
+			//checks to see if a second point has been hit
 			if (Strategy.current != null) {
 				Point p = Strategy.kill();
-				/*if (Strategy.checker(p)) {
+				//double checks to make sure the next point of fire is valid
+				if (Strategy.checker(p)) {
 					Strategy.current = Strategy.hit;
 					Strategy.direction = Strategy.direction * (-1);
 					p = Strategy.kill();
-				}//*/
+				}
+				//Makes sure it fires at an empty point
 				if(grid.getFired(p.getX(),p.getY()) == 0) {
 					grid.fire(p);
+					//if ship is sunk, set all parameters to original (resume ship hunting)
 					if (grid.getFired(p.getX(),p.getY()) == 3) {
 						Strategy.hit = null;
 						Strategy.current = null;
 						Strategy.direction = 1;
 					}
+					//updates the last point of fire
 					else if (grid.getFired(p.getX(),p.getY()) == 1) {
 						Strategy.current = p;
 					}
+					//if comes up empty, then tell the computer to go the other direction from the origin next time
 					else if (grid.getFired(p.getX(),p.getY()) == 2){
 						Strategy.current = Strategy.hit;
 						Strategy.direction = -1;
 					}
-				} else {
+				}
+				//if point is already occupied, try from other direction
+				else {
+					Strategy.current = Strategy.hit;
+					Strategy.direction = -1;
 					fireOnHuman();
 				}
 			}
+			//try to score a second shot on the ship
 			else {
 				Point p = Strategy.search();
-				/*if (Strategy.checker(p)) {
+				//make sure point is valid
+				if (Strategy.checker(p)) {
 					fireOnHuman();
-				}//*/
+				}
+				//make sure point is not occupied
 				if (grid.getFired(p.getX(),p.getY()) == 0) {
 					grid.fire(p);
+					//if the point is a hit, then record the second hit and record orientation of the ship
 					if (grid.getFired(p.getX(),p.getY()) == 1) {
 						Strategy.current = p;
+						Strategy.axisSetter();
 					}
 					
-				} else {
+				}
+				//otherwise, try a different shot
+				else {
 					fireOnHuman();
 				}
 			}
 		}
+		//hunting mode
 		else {
 			Point p = Strategy.hunt();
+			//make sure point is not occupied
 			if (grid.getFired(p.getX(),p.getY()) == 0) {
 				grid.fire(p);
+				//record a hit if there is one
 				if (grid.getFired(p.getX(),p.getY()) == 1) {
 					Strategy.hit = p;
 				}
-			} else {
+			}
+			//repeat if the point is occupied
+			else {
 				fireOnHuman();
 			}
-		}//*/
-		
-		/*Point p = new Point((int) (Math.random()*grid.getColumns()), (int) (Math.random()*grid.getRows()));
-		if (grid.getFired(p.getX(),p.getY()) == 0) {
-			grid.fire(p);
-		} else {
-			fireOnHuman();
-		}//*/
+		}
 	}
 }
